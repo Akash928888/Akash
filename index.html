@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <title>Wealcome  to the game</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      overflow: hidden;
+      background: #87CEEB; /* নীল ব্যাকগ্রাউন্ড */
+    }
+
+    .screen {
+      display: none;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #intro, #nameScreen, #gameScreen, #winScreen, #gameOverScreen {
+      display: none;
+    }
+
+    #intro {
+      display: flex;
+      font-size: 2em;
+      background: rgba(255,255,255,0.8);
+    }
+
+    #nameScreen input {
+      padding: 10px;
+      font-size: 1em;
+    }
+
+    #gameScreen {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #profile, #scoreboard, #contact {
+      position: absolute;
+      background: rgba(255,255,255,0.8);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    #profile {
+      top: 10px;
+      left: 10px;
+    }
+
+    #scoreboard {
+      top: 10px;
+      right: 10px;
+    }
+
+    #contact {
+      bottom: 10px;
+      right: 10px;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .shape {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      cursor: pointer;
+    }
+
+    .circle { border-radius: 50%; background: red; }
+    .square { background: green; }
+    .triangle {
+      width: 0;
+      height: 0;
+      border-left: 30px solid transparent;
+      border-right: 30px solid transparent;
+      border-bottom: 60px solid blue;
+    }
+
+    .long { width: 30px; height: 80px; background: rgb(0, 128, 122); }
+
+    #winScreen, #gameOverScreen {
+      display: none;
+      font-size: 2em;
+      padding: 20px;
+      background: rgba(255,255,255,0.9);
+    }
+
+    #secretCodeContainer {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      z-index: 1000; /* Ensure it's on top */
+    }
+
+    #secretCodeContainer input {
+      padding: 5px;
+      font-size: 1em;
+    }
+
+    #secretCodeContainer button {
+      padding: 5px 10px;
+      font-size: 1em;
+    }
+
+    .emoji {
+      position: absolute;
+      font-size: 2em;
+      animation: float 3s linear infinite;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(100vh); }
+      100% { transform: translateY(-100vh); }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="intro" class="screen">
+    <h1>wealcome to the game </h1>
+  </div>
+
+  <div id="nameScreen" class="screen">
+    <h2>type your name </h2>
+    <input type="text" id="playerName">
+    <button onclick="startGame()">start the game </button>
+  </div>
+
+  <div id="gameScreen" class="screen">
+    <div id="profile">
+      Player: <span id="playerDisplay"></span><br>
+      Game Owner: Akash biswas 
+    </div>
+    <div id="scoreboard">score: <span id="score">0</span></div>
+    <div id="contact">
+      experimentlab1111@gmail.com<br>
+      To win the game with a subscription       contact the gmail given above and go ahead and increase your respect for the game 
+    </div>
+
+    <div id="secretCodeContainer">
+      <input type="text" id="secretCode" placeholder="type the code ">
+      <button onclick="checkSecretCode()">ok</button>
+    </div>
+  </div>
+
+  <div id="winScreen" class="screen">
+    🏆 you win with great honor you are smert and hardworking ! <br><br>
+    <div id="emojiContainer"></div>
+    <br>
+    <button onclick="restartGame()">restart </button>
+  </div>
+
+  <div id="gameOverScreen" class="screen">
+    😢 gameOver!
+    <br><br>
+    <button onclick="restartGame()">try </button>
+  </div>
+
+  <script>
+    const intro = document.getElementById("intro");
+    const nameScreen = document.getElementById("nameScreen");
+    const gameScreen = document.getElementById("gameScreen");
+    const winScreen = document.getElementById("winScreen");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const playerDisplay = document.getElementById("playerDisplay");
+    const scoreDisplay = document.getElementById("score");
+    const secretCodeInput = document.getElementById("secretCode");
+    const secretCodeContainer = document.getElementById("secretCodeContainer");
+    const emojiContainer = document.getElementById("emojiContainer");
+    const playerNameInput = document.getElementById("playerName");
+
+    const shapeTypes = ['circle', 'square', 'triangle', 'long']; // Defines the order of shapes
+    const SECRET_CODE = "aaaakkkkeeeexxxx";
+    let score = 0;
+    let currentShapeIndex = 0; // Tracks the current shape to be clicked
+    let paused = false;
+    let gameInterval; // To hold the interval for dropping shapes
+
+    // Initial load: Check for saved player name
+    window.onload = () => {
+      const savedPlayerName = localStorage.getItem('playerName');
+      if (savedPlayerName) {
+        playerNameInput.value = savedPlayerName;
+        playerDisplay.textContent = savedPlayerName;
+        // Skip intro and name screen, go directly to game screen
+        intro.style.display = "none";
+        nameScreen.style.display = "none";
+        gameScreen.style.display = "block";
+        startGameLogic();
+      } else {
+        setTimeout(() => {
+          intro.style.display = "none";
+          nameScreen.style.display = "flex";
+        }, 2000);
+      }
+    };
+
+    function startGame() {
+      const name = playerNameInput.value.trim();
+      if (!name) {
+        alert("enter your name !");
+        return;
+      }
+      localStorage.setItem('playerName', name); // Save player name
+      playerDisplay.textContent = name;
+      nameScreen.style.display = "none";
+      gameScreen.style.display = "block";
+      startGameLogic();
+    }
+
+    function startGameLogic() {
+      score = 0;
+      currentShapeIndex = 0;
+      scoreDisplay.textContent = score;
+      dropShapes();
+    }
+
+    function dropShapes() {
+      if (paused) return;
+
+      // Clear any existing shapes before dropping new ones
+      removeAllShapes();
+
+      const correctShapeType = shapeTypes[currentShapeIndex];
+      const positions = [50, 150, 250, 350, 450, 550, 650]; // Example horizontal positions
+      const usedPositions = new Set();
+      let shapesToDrop = [];
+
+      // Add the correct shape
+      shapesToDrop.push(correctShapeType);
+
+      // Add 3 random incorrect shapes
+      while (shapesToDrop.length < 4) {
+        const randType = shapeTypes[Math.floor(Math.random() * shapeTypes.length)];
+        // Ensure the random shape is not the correct one and not already added to the set of shapes to drop
+        if (randType !== correctShapeType && !shapesToDrop.includes(randType)) {
+          shapesToDrop.push(randType);
+        }
+      }
+
+      // Shuffle the shapes to randomize their order on screen
+      shapesToDrop.sort(() => Math.random() - 0.5);
+
+      shapesToDrop.forEach(type => {
+        const shape = document.createElement("div");
+        shape.className = "shape " + type;
+
+        let pos;
+        do {
+          pos = positions[Math.floor(Math.random() * positions.length)];
+        } while (usedPositions.has(pos)); // Check if position is already used
+        usedPositions.add(pos); // Mark position as used
+
+        shape.style.left = pos + "px";
+        shape.style.top = "-60px"; // Start above the screen
+        gameScreen.appendChild(shape);
+
+        let top = -60;
+        const fallSpeed = 3; // Adjust fall speed as needed
+        const intervalTime = 20; // Milliseconds for each step
+
+        const fallInterval = setInterval(() => {
+          if (paused) {
+            clearInterval(fallInterval); // Stop falling when paused
+            return;
+          }
+          top += fallSpeed;
+          shape.style.top = top + "px";
+          if (top > window.innerHeight) {
+            clearInterval(fallInterval);
+            shape.remove();
+            // If the correct shape was missed, it's game over
+            if (shape.classList.contains(correctShapeType)) {
+                gameOver();
+            }
+          }
+        }, intervalTime);
+
+        shape.onclick = () => {
+          if (paused) return;
+          if (shape.classList.contains(correctShapeType)) {
+            score += 10;
+            scoreDisplay.textContent = score;
+            clearInterval(fallInterval);
+            shape.remove();
+            removeAllShapes(); // Remove all other falling shapes too
+            currentShapeIndex = (currentShapeIndex + 1) % shapeTypes.length; // Move to next shape in sequence
+
+            if (score >= 1000) {
+              winByScore();
+            } else {
+              // Delay before dropping next set of shapes
+              setTimeout(dropShapes, 500);
+            }
+          } else {
+            // Clicked wrong shape
+            gameOver();
+          }
+        };
+      });
+    }
+
+    function gameOver() {
+      removeAllShapes();
+      clearInterval(gameInterval); // Stop any ongoing game intervals
+      gameScreen.style.display = "none";
+      gameOverScreen.style.display = "flex";
+    }
+
+    function winByScore() {
+      removeAllShapes();
+      clearInterval(gameInterval); // Stop any ongoing game intervals
+      showWinner();
+    }
+
+    function checkSecretCode() {
+      if (secretCodeInput.value.trim() === SECRET_CODE) {
+        removeAllShapes();
+        clearInterval(gameInterval); // Stop any ongoing game intervals
+        showWinner();
+        setTimeout(() => {
+          // Allow restart button to show up later
+          document.querySelector("#winScreen button").style.display = "inline-block";
+        }, 10000);
+      } else {
+        alert("worang code 💲💲💲💲!");
+      }
+    }
+
+    function showWinner() {
+      gameScreen.style.display = "none";
+      winScreen.style.display = "flex";
+      emojiContainer.innerHTML = ""; // Clear previous emojis
+      for (let i = 0; i < 50; i++) {
+        const emoji = document.createElement("div");
+        emoji.className = "emoji";
+        emoji.textContent = "🎉❤️😎";
+        emoji.style.left = Math.random() * 100 + "vw";
+        emoji.style.top = Math.random() * 100 + "vh";
+        emojiContainer.appendChild(emoji);
+      }
+      document.querySelector("#winScreen button").style.display = "none"; // Hide initially
+    }
+
+    function restartGame() {
+      location.reload(); // Reloads the page, resetting everything including the name if cleared
+    }
+
+    function removeAllShapes() {
+      document.querySelectorAll(".shape").forEach(s => s.remove());
+    }
+
+    // Pause/unpause game when interacting with secret code input
+    secretCodeContainer.addEventListener("mouseenter", () => {
+      paused = true;
+      removeAllShapes(); // Clear any falling shapes
+    });
+
+    secretCodeContainer.addEventListener("mouseleave", () => {
+      paused = false;
+      // If the game was in progress, resume dropping shapes
+      if (gameScreen.style.display === "block" && score < 1000) {
+          dropShapes();
+      }
+    });
+  </script>
+</body>
+</html>
